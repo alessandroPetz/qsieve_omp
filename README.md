@@ -1,3 +1,13 @@
+(new)
+Sono presenti qui 3 versioni  funzionanti del quadratic sieve parallelo.
+
+- versione cuda
+- versione omp con libreria gmp
+- version omp senza libreria gmp
+
+______________________________________________________________________
+
+
 qsieve_omp
 ==========
 
