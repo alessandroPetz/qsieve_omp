@@ -102,8 +102,8 @@ BigInt ( BigInt a, BigInt b, BigInt m )
 }
 */
 
-///////// power cuda /////////////
-__device__ BigInt pow_cuda(BigInt base, int exponent) // ok testata
+/*
+__device__ BigInt pow_cuda_old(BigInt base, int exponent) // ok testata
 {
     BigInt result = base;
     for (int i = 1; i < exponent; i++ ){
@@ -113,19 +113,24 @@ __device__ BigInt pow_cuda(BigInt base, int exponent) // ok testata
     }  
      return result;
 }
+*/
 
-/////////////gcd cuda ///////////////////////
-
-__device__ BigInt gcd_cuda2( BigInt a, BigInt b )
+// Implementazione potenza per device
+__device__ BigInt pow_cuda(BigInt base, int exponent) // ok testata
 {
-  int c;
-  while ( a != 0 ) {
-     c = a; a = b%a;  b = c;
-  }
-  return b;
+    BigInt result = 1;
+    BigInt n = exponent;
+    BigInt a = base;
+    while(n>0){
+      
+      result *= a * (n%2==1)+ 1*(n%2 == 0);
+      n /= 2;
+      a *=a;
+    }
+     return result;
 }
 
-
+//Fonte = http://en.wikipedia.org/wiki/Binary_GCD_algorithm
 __device__ BigInt gcd_cuda(BigInt u, BigInt v)
 {
   int shift;
@@ -162,10 +167,19 @@ __device__ BigInt gcd_cuda(BigInt u, BigInt v)
  
   /* restore common factors of 2 */
   return u << shift;
+  
+  /*
+   int c;
+  while ( a != 0 ) {
+     c = a; a = b%a;  b = c;
+  }
+  return b;
+  */
 }
 
 
 //calculates (a * b) % c taking into account that a * b might overflow/////
+//Fonte = http://stackoverflow.com/questions/20971888/modular-multiplication-of-large-numbers-in-c
 BigInt mulmod(BigInt  a, BigInt  b, BigInt  c)
 {
 
@@ -184,6 +198,7 @@ BigInt mulmod(BigInt  a, BigInt  b, BigInt  c)
     return result;
 }
 
+// Versione device
 __device__ BigInt mulmod_cuda(BigInt  a, BigInt  b, BigInt  c)
 {
 
@@ -202,9 +217,8 @@ __device__ BigInt mulmod_cuda(BigInt  a, BigInt  b, BigInt  c)
     return result;
 }
 
-
-
-//modular exponentiation///////////////////////////////////////////////////////
+//modular exponentiation
+// Info : http://en.wikipedia.org/wiki/Modular_exponentiation
 BigInt modulo(BigInt base, BigInt exponent, BigInt mod)
 {
 
@@ -222,6 +236,7 @@ BigInt modulo(BigInt base, BigInt exponent, BigInt mod)
     return x % mod;
 }
 
+// versione device
 __device__ BigInt modulo_cuda(BigInt base, BigInt exponent, BigInt mod)
 {
 
@@ -240,6 +255,8 @@ __device__ BigInt modulo_cuda(BigInt base, BigInt exponent, BigInt mod)
 }
 
 // modular inversion
+// Fonte : http://rosettacode.org/wiki/Modular_inverse#C.2B.2B
+
 BigInt mul_inv(BigInt a, BigInt b)
 {
 
@@ -260,7 +277,7 @@ BigInt mul_inv(BigInt a, BigInt b)
 	return x1;
 }
 
-// modular inversion
+// versione Device
 __device__ BigInt mul_inv_cuda(BigInt a, BigInt b)
 {
 	BigInt b0 = b, t, q;
@@ -282,6 +299,7 @@ __device__ BigInt mul_inv_cuda(BigInt a, BigInt b)
 
 
 //test Miller-Rabin
+// Info : http://it.wikipedia.org/wiki/Test_di_Miller-Rabin
 bool Miller(BigInt p,int iteration)
 {
     if (p < 2){
@@ -318,6 +336,8 @@ bool Miller(BigInt p,int iteration)
     return true;
 }
 
+// Calcola il successivo secondo il lemma di hensell
+// Info : http://en.wikipedia.org/wiki/Hensel%27s_lemma
 __device__ BigInt hensell_cuda(BigInt r1, BigInt  n, BigInt p)
 {
 
@@ -341,7 +361,7 @@ __device__ BigInt hensell_cuda(BigInt r1, BigInt  n, BigInt p)
 
     return temp;
 }
-
+// Test di Legendre
 bool testLegendre(BigInt number, BigInt nRSA){
 
     //mpz_class a;
@@ -356,11 +376,11 @@ bool testLegendre(BigInt number, BigInt nRSA){
     return true;
 
 }
-
-
-
+// Numero di legendre
 int legendre(BigInt a, BigInt p)
 {
+
+  
   
       //if (p < 2)  // prime test is expensive.
         //throw new ArgumentOutOfRangeException("p", "p must not be < 2");
@@ -393,6 +413,8 @@ int legendre(BigInt a, BigInt p)
       }
       return result;
     }
+    
+// versione CUDA    
 __device__ int legendre_cuda(BigInt a, BigInt p)
 {
       //if (p < 2)  // prime test is expensive.
@@ -427,7 +449,7 @@ __device__ int legendre_cuda(BigInt a, BigInt p)
       return result;
     }
 
-    
+// Test bit = 0 o 1, di un certo numero.    
 __device__ int test_bit_cuda(BigInt a, int pos_test) // ok testata
 {
   
@@ -452,6 +474,9 @@ __device__ int test_bit_cuda(BigInt a, int pos_test) // ok testata
   return rest;
 }
 
+// Calcola il residuo QUadratico
+// Info: http://it.wikipedia.org/wiki/Residuo_quadratico
+//Fonte: Tradotta in c++ dalla versione mpz -> https://gmplib.org/list-archives/gmp-devel/2006-May/000633.html
 __device__ int mpz_sqrtm_cuda(BigInt n, BigInt p) {  // ok testata
 
     BigInt q_int;
@@ -530,7 +555,7 @@ __device__ int mpz_sqrtm_cuda(BigInt n, BigInt p) {  // ok testata
     
 }
 
-  ///////okkkkkkkkkkkkkkkkkkkk///////////////
+// Parallelizzazione della Generazione delle relazioni
 __global__ void genlistypsilon(BigInt *lyn_pun, BigInt *nRSA, BigInt *x_0,long *m){
   
     //*(C+threadIdx.x) = *(A+threadIdx.x) + *(B+threadIdx.x);
@@ -540,7 +565,7 @@ __global__ void genlistypsilon(BigInt *lyn_pun, BigInt *nRSA, BigInt *x_0,long *
     lyn_pun[idx] = (*x_0 + idx-*m) * (*x_0 + idx-*m) - *nRSA;
 }
 
-///////okkkkkkkkkkkkkkkkkkkk///////////////
+// Parallelizzazione del processo del setaccio con il fattore 2 
 __global__ void div2whileposs(BigInt *lyn_pun){
   
   int idx = blockIdx.x*blockDim.x + threadIdx.x;
@@ -552,8 +577,8 @@ __global__ void div2whileposs(BigInt *lyn_pun){
   }
   
 }
-//// okkkkkkkkkkkkkkkkk /////////////////////////////////////////
-//__global__ void div3up_while_poss( BigInt *factorBase_d, BigInt *lyn_pun,BigInt *nRSA, int *start ,BigInt *x_0,long *m){
+
+// Parallelizzazione del processo del setaccio dal fattore 3 in su 
 __global__ void div3up_while_poss(Lock lock, BigInt *factorBase_d, BigInt *lyn_pun,BigInt *nRSA, int *start ,BigInt *x_0,long *m){
   
   int idx = blockIdx.x*blockDim.x + threadIdx.x + *start;
@@ -662,6 +687,7 @@ __global__ void div3up_while_poss(Lock lock, BigInt *factorBase_d, BigInt *lyn_p
     }
 }
 
+// Parallelizzazione del processo di valutazione dei vettori soluzione
 __global__ void evaluate_solutions( BigInt *nRSA_d, BigInt *factorBase_d, BigInt *x_0_d , BigInt *jBuoni_d ,BigInt *listExponentOk_d, size_t pitch , int* listExponentOk_mod2_d, size_t pitch2 ,int *vect_solution_d, int *vect_pivot_d, BigInt *result_d, long* contRelationOk_d,long* factorBaseSize_d,long* jBuonicont_d)
 {
   
@@ -1294,20 +1320,19 @@ BigInt factorize(BigInt  nRSA, BigInt  x_0,  long k, long m){
     
     cout << "result = " << *result <<  endl;
     
-   // exit(1);
-    
     
 //////////////////////////// cuda finish ////////////////////////////////////////
     
+    gettimeofday(&stop_step6, NULL);
+    elapsedTime_step6 += (stop_step6.tv_sec - start_step6.tv_sec) * 1000.0;               // sec to ms
+    elapsedTime_step6 += (stop_step6.tv_usec - start_step6.tv_usec) / 1000.0;
     
     if (*result != 0 ){
         
         return *result;
     }
 
-    gettimeofday(&stop_step6, NULL);
-    elapsedTime_step6 += (stop_step6.tv_sec - start_step6.tv_sec) * 1000.0;               // sec to ms
-    elapsedTime_step6 += (stop_step6.tv_usec - start_step6.tv_usec) / 1000.0;
+    
 
     return -2;
 
@@ -1390,7 +1415,7 @@ gettimeofday(&start_tot, NULL);
         elapsedTime_tot += (stop_tot.tv_usec - start_tot.tv_usec) / 1000.0;            // us to ms
 
 
-        //cout << "k = " << k << ", m = " << m << endl;
+        cout << "k = " << k << ", m = " << m << endl;
         cout << "-1 volte = " << cont_meno1 << ", -2 volte = " << cont_meno2 << endl;
         cout << endl << "nRSA = " << result << " x " << nRSA/result <<endl;
         cout << "nrsa = " << nRSA << endl;
@@ -1399,6 +1424,8 @@ gettimeofday(&start_tot, NULL);
         cout << " t-step4 = " << elapsedTime_step4 << " ms.\n" << endl;
         cout << " t-step5 = " << elapsedTime_step5<< " ms.\n" << endl;
         cout << " t-step6 = " << elapsedTime_step6 << " ms.\n" << endl;
+	cout << "[QSieve, ver. CUDA]" << endl;
+        cout << endl;
 
 
     }else{
