@@ -14,16 +14,18 @@ using namespace std;
 timeval start_step3, stop_step3,start_step4, stop_step4,start_step5, stop_step5, start_step6, stop_step6;
 double elapsedTime_step3 = 0,elapsedTime_step4 = 0,elapsedTime_step5 = 0,elapsedTime_step6 = 0;
 
-//FacorBase dichiarata qui cosi non bisogna calcolarsi ogni volta tutti i primi.
+//factorBase Visibile da ogni funzione.
 std::vector<mpz_class> factorBase ;
 mpz_class primo = 0;
 
-
+// Calcola il residuo QUadratico
+// Info: http://it.wikipedia.org/wiki/Residuo_quadratico
+//Fonte : https://gmplib.org/list-archives/gmp-devel/2006-May/000633.html
 int mpz_sqrtm(mpz_t q, const mpz_t n, const mpz_t p) {
+
     mpz_t w, n_inv, y;
     unsigned int i, s;
-    //TMP_DECL;
-    //TMP_MARK;
+
     if(mpz_divisible_p(n, p)) { /* Is n a multiple of p? */
         mpz_set_ui(q, 0); /* Yes, then the square root is 0. */
         return 1; /* (special case, not caught */
@@ -31,6 +33,8 @@ int mpz_sqrtm(mpz_t q, const mpz_t n, const mpz_t p) {
     /*if(mpz_legendre(n, p) != 1) /* Not a quadratic residue? */
     /* return 0; /* No, so return error */
     if(mpz_tstbit(p, 1) == 1) { /* p = 3 (mod 4) ? */
+
+        //cout << "uscita check, p = " << p <<  endl;
         mpz_set(q, p);
         mpz_add_ui(q, q, 1);
         mpz_fdiv_q_2exp(q, q, 2);
@@ -46,7 +50,10 @@ int mpz_sqrtm(mpz_t q, const mpz_t n, const mpz_t p) {
     mpz_set(q, p);
     mpz_sub_ui(q, q, 1); /* q = p-1 */
     s = 0; /* Factor out 2^s from q */
-    while(mpz_tstbit(q, s) == 0) s++;
+    while(mpz_tstbit(q, s) == 0) {
+    //cout << "&&&&&&&&&&&&&&&&&&&&&&n = "  << ", q_int= " << q << endl;
+            s++;
+    }
     mpz_fdiv_q_2exp(q, q, s); /* q = q / 2^s */
     mpz_set_ui(w, 2); /* Search for a non-residue mod p */
     while(mpz_legendre(w, p) != -1) /* by picking the first w such that */
@@ -56,6 +63,7 @@ int mpz_sqrtm(mpz_t q, const mpz_t n, const mpz_t p) {
     mpz_fdiv_q_2exp(q, q, 1); /* q = (q+1) / 2 */
     mpz_powm(q, n, q, p); /* q = n^q (mod p) */
     mpz_invert(n_inv, n, p);
+
     for(;;) {
         mpz_powm_ui(y, q, 2, p); /* y = q^2 (mod p) */
         mpz_mul(y, y, n_inv);
@@ -77,10 +85,14 @@ int mpz_sqrtm(mpz_t q, const mpz_t n, const mpz_t p) {
         }
         mpz_mod(q, q, p); /* r = r * w^(2^(s-i-1)) (mod p) */
     }
+
     mpz_clear(w); mpz_clear(n_inv); mpz_clear(y);
     return 0;
 }
 
+
+// Calcolo del numero successivo secondo il lemma di hensell
+// Info : http://en.wikipedia.org/wiki/Hensel%27s_lemma
 mpz_class  hensellemma(mpz_class r1, mpz_class  n, mpz_class p)
 {
 
@@ -92,10 +104,13 @@ mpz_class  hensellemma(mpz_class r1, mpz_class  n, mpz_class p)
 
     mpz_powm (temp.get_mpz_t(), temp2.get_mpz_t() , expneg.get_mpz_t(), p.get_mpz_t() );
 
-    return (r1 - ( ( (r1*r1) - n) % p ) * temp ) % p;
+
+    temp = (r1 - ( ( (r1*r1) - n) % p ) * temp ) % p;
+
+    return temp;
 }
 
-
+// Test di Legendre
 bool testLegendre(mpz_class number, mpz_class nRSA){
 
     mpz_class a;
@@ -108,23 +123,26 @@ bool testLegendre(mpz_class number, mpz_class nRSA){
         return false;
     }
     return true;
-
 }
 
+
+// Funzione che cerca di fattorizzare un numero RSA applicando
+// l'algoritmo del Quadratic Sieve
+// nRSA = numero RSA da fattorizzare
+// x_0 = sqrt(RSA), numero da usare per il calcolo delle relazioni
+// k = Numero max dentro factorBase
+// m = intervallo min e max delle relazioni da considerare
+
+/*puo restituire        -2 = trovati solo fattori banali -> aumentare k
+                        -1 = meno relazione che fattori -> aumentare b
+                        - soluzione!
+*/
 mpz_class factorize(mpz_class nRSA, mpz_class x_0,  long k, long m){
 
-    //a = numero rsa
-    //x_0 = radice n rsa
-    //k = numero factorBase
-    //m = numero di relazioni
 
-    /*puo restituire    -2 = trovati solo fattori banali -> aumentare k
-                        -1 = meno relazione che fattori -> aumentare b
-                        soluzione!
-    */
     // STEP 1 IMMETTERE nRSA
 
-    // STEP2 : SI SCEGLIE UN  K > 0, i numeri primi della factor base devono essere minori di k.
+   // STEP2 : SI SCEGLIE UN  K > 0, i numeri primi della factor base devono essere minori di k.
    cout << "step 2" << endl;
 
     // STEP3 : CREO FACTOR BASE,
@@ -160,8 +178,8 @@ mpz_class factorize(mpz_class nRSA, mpz_class x_0,  long k, long m){
     mpz_class listYpsilonNumber[2*m];
     mpz_class listYpsilonNumber_test[2*m];
 
-    cout << "step 4b parallel" << endl;
-           //cout << "LISTA RELAZIONI :" << endl;
+    //cout << "step 4b parallel" << endl;
+    //cout << "LISTA RELAZIONI :" << endl;
     #pragma omp parallel for
     for (long j = -m ; j < m ; j++){
         //cout << "a(" << j << ") = " << yNumb << endl;
@@ -172,8 +190,6 @@ mpz_class factorize(mpz_class nRSA, mpz_class x_0,  long k, long m){
         listYpsilonNumber_test[j+m] = temp;
             //cout << "a(" << j << ") = " << listYpsilonNumber[j+m] << endl;
     }
-
-    //cout << "m = "<< m << endl;
 
     // FASE SETACCIO, CONTROLLARE QUALI DEI NUMERI GENERATI NELLA YLIST SONO FATTORIZZABILI
     // CON LA FACTORBASE
@@ -199,7 +215,7 @@ mpz_class factorize(mpz_class nRSA, mpz_class x_0,  long k, long m){
     }
 
 
-    cout << "caso2+" << endl;
+    //cout << "caso2+" << endl;
     #pragma omp parallel for schedule(dynamic)
     for (long p = start; p< factorBase.size(); p++){
 
@@ -225,28 +241,33 @@ mpz_class factorize(mpz_class nRSA, mpz_class x_0,  long k, long m){
                 mpz_sqrtm(s.get_mpz_t(),nRSA.get_mpz_t(),p_origin.get_mpz_t()); // ho s e h
                 h = l_fact - s;
 
-             //  cout << "s = "<< s << ", h = "<< h << endl;
+               //cout<< "lfact = " << l_fact << ", s = "<< s << ", h = "<< h << endl;
                 s_calc_temp = s - (x_0 % l_fact);
+                //cout << "s_calc_prima = " << s_calc_temp << endl;
                 mpz_powm_ui(s_calc_temp.get_mpz_t(),s_calc_temp.get_mpz_t(),1,l_fact.get_mpz_t());
                 h_calc_temp = (h - (x_0 % l_fact)) % l_fact;
+                //cout << "h_calc_prima = " << h_calc_temp << endl;
                 mpz_powm_ui(h_calc_temp.get_mpz_t(),h_calc_temp.get_mpz_t(),1,l_fact.get_mpz_t());
 
-              // cout << "scalc_temp = "<< s_calc_temp << ", hcalc_temp = "<< h_calc_temp << endl;
+               //cout << "scalc_temp = "<< s_calc_temp << ", hcalc_temp = "<< h_calc_temp << endl;
             }else{
 
              // cout << "caso exp = 2"<< endl;							// se abbiamo un p^k
-            //  cout << "prima..s = "<< s << ", h = "<< h << endl;
+              //cout<< "lfact = " << l_fact << ", s = "<< s << ", h = "<< h << endl;
                 s= hensellemma(s,nRSA, l_fact);				// ho r2 e r2a
                 h= l_fact - s;
-            //  cout << "dopo..s = "<< s << ", h = "<< h << endl;
+              //cout<< "lfact = " << l_fact << ", s = "<< s << ", h = "<< h << endl;
 
                 s_calc_temp = (s - (x_0 % l_fact)) % l_fact;
+                //cout << "s_calc_prima = " << s_calc_temp << endl;
+
                 mpz_powm_ui(s_calc_temp.get_mpz_t(),s_calc_temp.get_mpz_t(),1,l_fact.get_mpz_t());
 
                 h_calc_temp = (h - (x_0 % l_fact)) % l_fact;
+                //cout << "h_calc_prima = " << h_calc_temp << endl;
                 mpz_powm_ui(h_calc_temp.get_mpz_t(),h_calc_temp.get_mpz_t(),1,l_fact.get_mpz_t());
 
-             // cout << "scalc = "<< s_calc_temp << ", hcalc = "<< h_calc_temp << endl;
+              //cout << "scalc = "<< s_calc_temp << ", hcalc = "<< h_calc_temp << endl;
             }
             mpz_class k = 0;
             while(true){
@@ -290,7 +311,6 @@ mpz_class factorize(mpz_class nRSA, mpz_class x_0,  long k, long m){
             exp++;                                                     // aumentiamo l esponente
         }
     }
-
     gettimeofday(&stop_step4, NULL);
     elapsedTime_step4 += (stop_step4.tv_sec - start_step4.tv_sec) * 1000.0;               // sec to ms
     elapsedTime_step4 += (stop_step4.tv_usec - start_step4.tv_usec) / 1000.0;
@@ -307,6 +327,7 @@ mpz_class factorize(mpz_class nRSA, mpz_class x_0,  long k, long m){
         if (listYpsilonNumber_test[j+m] == -1 or listYpsilonNumber_test[j+m] == 1){
             #pragma omp atomic
             contRelationOk++; // mi serve per sapere la dimensione dell array ed essere comodo dopo..
+            //cout <<"ok = " << j+m << endl;
         }
     }
 
@@ -356,10 +377,10 @@ mpz_class factorize(mpz_class nRSA, mpz_class x_0,  long k, long m){
                           //  cout << "5c" << endl;
                     mpz_class pmpz = factorBase.at(p);
                     fact_temp = fact_temp * pmpz;
-                         //   cout << "listynumber = "<< listYpsilonNumber[j+m] << "fact_temp = " << fact_temp << endl;
+                            //cout << "listynumber = "<< listYpsilonNumber[j+m] << "fact_temp = " << fact_temp << endl;
                     if( (listYpsilonNumber[j+m] % fact_temp )== 0){
                                 //cout << "ok" <<endl;
-                                //#pragma omp critical
+                                #pragma omp critical
                         listExponentOk[cont][p+1]++;
 
                     }else{
@@ -374,8 +395,6 @@ mpz_class factorize(mpz_class nRSA, mpz_class x_0,  long k, long m){
 
             cont++;
             jBuoni.push_back(j);
-                //cout << "5e" << endl;
-                // cout << "j = " << j;
         }
     }
        // cout << endl;
@@ -393,7 +412,6 @@ mpz_class factorize(mpz_class nRSA, mpz_class x_0,  long k, long m){
     //        cout << endl;
       //   }
 
-     // DA PARALLELIZZARE
     // STEP 6 METODO DI GAUSS
     // Con il metodo di eliminazione di Gauss si determinano alcuni dei vettori v_2(y_i) che danno somma uguale al vettore nullo
 
@@ -429,8 +447,8 @@ mpz_class factorize(mpz_class nRSA, mpz_class x_0,  long k, long m){
                     listExponentOk_mod2[z][row_i] = listExponentOk_mod2[z][cont_rig];
                     listExponentOk_mod2[z][cont_rig] = temp;
 
-                       // cout << "z = " << z <<", cont_rig = "<< cont_rig << ", row_i = "<< row_i<<  endl;
-                       // cout << "scambio " << listExponentOk_mod2[z][row_i] <<" con "<< listExponentOk_mod2[z][cont_rig] << endl;
+                        //cout << "z = " << z <<", cont_rig = "<< cont_rig << ", row_i = "<< row_i<<  endl;
+                        //cout << "scambio " << listExponentOk_mod2[z][row_i] <<" con "<< listExponentOk_mod2[z][cont_rig] << endl;
                 }
                 cont_rig++;
             }
@@ -474,15 +492,13 @@ mpz_class factorize(mpz_class nRSA, mpz_class x_0,  long k, long m){
             }
         }
     }
-
     mpz_class result = 0;
     // PARALLELIZZ0 IN MODO CHE TUTTI GLI ARRAI SOLUZIONI POSSIBILI
     // VEGONO VALUTATI IN PARALLELO
     cout << "step 7" << endl;
     #pragma omp parallel for schedule(dynamic)
     for(long s = 0; s < n_free_var; s++){
-            //cout << "numeri free var" <<n_free_var << endl;
-        // copia locale di vect solution... ???? è una soluzione buona? pare di si..
+
         int vect_solution_local[contRelationOk];
         for (long i = 0; i< contRelationOk; i++){
             vect_solution_local[i] = vect_solution[i];
@@ -557,7 +573,7 @@ mpz_class factorize(mpz_class nRSA, mpz_class x_0,  long k, long m){
             for (long i = 0; i < factorBase.size(); i++){
                 exponent[i]=0;
             }
-     //  cout << "step 7b" << endl;
+
             for (p2 = jBuoni.begin(); p2 != jBuoni.end(); p2++){
 
                 if (vect_solution_local[cont] == 1){
@@ -571,7 +587,7 @@ mpz_class factorize(mpz_class nRSA, mpz_class x_0,  long k, long m){
                 }
                 cont++;
             }
-        //cout << "a = " << a << endl;
+
             cont=0;
             for (long p = 0; p <  factorBase.size(); p++){
 
@@ -658,28 +674,28 @@ gettimeofday(&start_tot, NULL);
          //   cout << "lancio con nRSA = "<< nRSA << ", k = "<< k << ", m = " << m << endl;
             result = factorize(nRSA,x_0,k,m);
             if ( result == -2){
-                //k = k+10;
-                //m=m+30;
-                k = k+20;
-                m = k*k*k;
+                k = k+10;
+                m=  m+30;
+                //k = k+20;
+                //m = k*k*k;
 
 
                 cont_meno2++;
                // cout << "cont mano 1 = " << cont_meno1 << endl;
                // cout << "cont mano 2 = " << cont_meno2 << endl;
-                cout << "k =" << k << ", m = " << m << endl;
+                //cout << "k =" << k << ", m = " << m << endl;
                // cout << endl;
             }
             else if ( result == -1){
-                k = k +5;
-                m = k*k*k;
-                //k=k+10;
-                //m=m+5;
+                //k = k +5;
+                //m = k*k*k;
+                k=k+10;
+                m=m+10;
                 cont_meno1++;
             //    cout << "k = " << k << ", m = " << m<< endl;
               //  cout << "cont mano 1 = " << cont_meno1 << endl;
               //  cout << "cont mano 2 = " << cont_meno2 << endl;
-                cout << "k =" << k << ", m = " << m << endl;
+                //cout << "k =" << k << ", m = " << m << endl;
               //  cout << endl;
             }else{
 
@@ -692,7 +708,7 @@ gettimeofday(&start_tot, NULL);
         elapsedTime_tot += (stop_tot.tv_usec - start_tot.tv_usec) / 1000.0;            // us to ms
 
 
-        //cout << "k = " << k << ", m = " << m << endl;
+        cout << "k = " << k << ", m = " << m << endl;
         cout << "-1 volte = " << cont_meno1 << ", -2 volte = " << cont_meno2 << endl;
         cout << endl << "nRSA = " << result << " x " << nRSA/result <<endl;
         cout << "nrsa = " << nRSA << endl;
@@ -701,7 +717,8 @@ gettimeofday(&start_tot, NULL);
         cout << " t-step4 = " << elapsedTime_step4 << " ms.\n" << endl;
         cout << " t-step5 = " << elapsedTime_step5<< " ms.\n" << endl;
         cout << " t-step6 = " << elapsedTime_step6 << " ms.\n" << endl;
-
+        cout << "[QSieve, ver. OMP con GMP]" << endl;
+        cout << endl;
 
     }else{
 
