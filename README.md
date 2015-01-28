@@ -1,5 +1,6 @@
 (new)
 Sono presenti qui 3 versioni  funzionanti del quadratic sieve parallelo.
+Commentate.
 
 - versione cuda (necessita il file lock.h)
 - versione omp con libreria gmp
