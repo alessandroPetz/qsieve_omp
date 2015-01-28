@@ -21,7 +21,7 @@ std::vector<BigInt> factorBase ;
 long long primo = 0;
 
 
-
+//Fonte = http://en.wikipedia.org/wiki/Binary_GCD_algorithm
 BigInt gcd(BigInt u, BigInt v)
 {
   int shift;
@@ -61,6 +61,7 @@ BigInt gcd(BigInt u, BigInt v)
 }
 
 //calculates (a * b) % c taking into account that a * b might overflow
+//Fonte = http://stackoverflow.com/questions/20971888/modular-multiplication-of-large-numbers-in-c
 BigInt mulmod(BigInt  a, BigInt  b, BigInt  c)
 {
 
@@ -81,6 +82,7 @@ BigInt mulmod(BigInt  a, BigInt  b, BigInt  c)
 
 
 //modular exponentiation
+// Info : http://en.wikipedia.org/wiki/Modular_exponentiation
 BigInt modulo(BigInt base, BigInt exponent, BigInt mod)
 {
 
@@ -99,6 +101,7 @@ BigInt modulo(BigInt base, BigInt exponent, BigInt mod)
 }
 
 // modular inversion
+// Fonte : http://rosettacode.org/wiki/Modular_inverse#C.2B.2B
 BigInt mul_inv(BigInt a, BigInt b)
 {
 	BigInt b0 = b, t, q;
@@ -119,6 +122,7 @@ BigInt mul_inv(BigInt a, BigInt b)
 }
 
 //test Miller-Rabin
+// Info : http://it.wikipedia.org/wiki/Test_di_Miller-Rabin
 bool Miller(BigInt p,int iteration)
 {
     if (p < 2){
@@ -155,7 +159,8 @@ bool Miller(BigInt p,int iteration)
     return true;
 }
 
-
+// Calcola il successivo secondo il lemma di hensell
+// Info : http://en.wikipedia.org/wiki/Hensel%27s_lemma
 BigInt  hensellemma(BigInt r1, BigInt  n, BigInt p)
 {
 
@@ -180,7 +185,7 @@ BigInt  hensellemma(BigInt r1, BigInt  n, BigInt p)
     return temp;
 }
 
-
+// effettua il test di Legendre
 bool testLegendre(BigInt number, BigInt nRSA){
 
     //mpz_class a;
@@ -196,7 +201,7 @@ bool testLegendre(BigInt number, BigInt nRSA){
 
 }
 
-
+// Calcola il numero di Legendre
 int legendre(BigInt a, BigInt p)
 {
       //if (p < 2)  // prime test is expensive.
@@ -231,6 +236,9 @@ int legendre(BigInt a, BigInt p)
       return result;
     }
 
+// Calcola il residuo QUadratico
+// Info: http://it.wikipedia.org/wiki/Residuo_quadratico
+//Fonte: Tradotta in c++ dalla versione mpz -> https://gmplib.org/list-archives/gmp-devel/2006-May/000633.html
 int mpz_sqrtm(BigInt n, BigInt p) {
 //cout << " mpz 11 " << endl;
 
@@ -245,7 +253,7 @@ int mpz_sqrtm(BigInt n, BigInt p) {
 
     std::bitset<(sizeof(p)*8)-1> foo2 (p);
     if(foo2.test(1)) {
-        cout << "uscita checkbit" << endl;
+        //cout << "uscita checkbit" << endl;
         q_int = modulo (n, (p+1)/4 , p  ) ;
         return q_int;
     }
@@ -254,8 +262,6 @@ int mpz_sqrtm(BigInt n, BigInt p) {
     q_int = p - 1;
     s = 0; /* Factor out 2^s from q */
 
-    //while(mpz_tstbit(q, s) == 0) s++;
-
     std::bitset<(sizeof(q_int)*8)-1> foo (q_int);
     while (!foo.test(s)) {
         s++;
@@ -263,71 +269,37 @@ int mpz_sqrtm(BigInt n, BigInt p) {
 
     q_int = q_int / pow(2,s);
 
-    //mpz_set_ui(w, 2); /* Search for a non-residue mod p */
     w = 2;
 
     while (legendre(w,p) != -1){
             w++;
     }
-//cout << " mpz 1 5" << endl;
-    //mpz_powm(w, w, q, p); /* w = w^q (mod p) */
+
     w = modulo(w,q_int,p);
-
-    //mpz_add_ui(q, q, 1);
     q_int++;
-
-    //mpz_fdiv_q_2exp(q, q, 1); /* q = (q+1) / 2 */
     q_int = q_int / 2;
-
-    //mpz_powm(q, n, q, p); /* q = n^q (mod p) */
     q_int = modulo(n , q_int , p);
-
-    //mpz_invert(n_inv, n, p);
     n_inv = mul_inv(n,p);
-//cout << " mpz 16 " << endl;
+
 
     for(;;) {
-        cout << " mpz 1 7" << endl;
-        //mpz_powm_ui(y, q, 2, p); /* y = q^2 (mod p) */
+
         y = modulo(q_int,2,p);
-
-        //mpz_mul(y, y, n_inv);
-        //y = y * n_inv;
-
-        //mpz_mod(y, y, p); /* y = y * n^-1 (mod p) */
-        //y = y % p;
-
         y = mulmod(y,n_inv,p);
 
         i = 0;
-        // while(mpz_cmp_ui(y, 1) != 0) {
-        //    i++;
-        //    mpz_powm_ui(y, y, 2, p); /* y = y ^ 2 (mod p) */
-        //}
+
         while (y != 1){
-            cout << "aaaaaaaaaaaa, y = " << y << "^2 mod"<< p << endl;
+           // cout << "aaaaaaaaaaaa, y = " << y << "^2 mod"<< p << endl;
             i++;
             y = modulo(y,2,p);
-            // cout << " mpz 1 7343 y = "<< y << endl;
         }
-        //cout << " mpz 18 " << endl;
 
-
-        //if(i == 0) { /* q^2 * n^-1 = 1 (mod p), return */
-            //TMP_FREE;
-        //    return 1;
-        // }
         if (i == 0 ) {
-            //cout << "uscito" << endl;
-            //exit(1);
+
             return q_int;
         }
-        //if(s-i == 1) { /* In case the exponent to w is 1, */
-        //    mpz_mul(q, q, w); /* Don't bother exponentiating */
-        //} else {
-        //    mpz_powm_ui(y, w, 1 << (s-i-1), p);
-        //    mpz_mul(q, q, y);
-        //}
+
         if (s-i == 1){
             q_int = q_int * w;
         } else {
@@ -343,6 +315,18 @@ int mpz_sqrtm(BigInt n, BigInt p) {
     //return 0;
     return q_int;
 }
+
+// Funzione che cerca di fattorizzare un numero RSA applicando
+// l'algoritmo del Quadratic Sieve
+// nRSA = numero RSA da fattorizzare
+// x_0 = sqrt(RSA), numero da usare per il calcolo delle relazioni
+// k = Numero max dentro factorBase
+// m = intervallo min e max delle relazioni da considerare
+
+/*puo restituire        -2 = trovati solo fattori banali -> aumentare k
+                        -1 = meno relazione che fattori -> aumentare b
+                        - soluzione!
+*/
 
 BigInt factorize(BigInt  nRSA, BigInt  x_0,  long k, long m){
 
@@ -403,7 +387,7 @@ BigInt factorize(BigInt  nRSA, BigInt  x_0,  long k, long m){
     BigInt listYpsilonNumber_test[2*m];
 
     //cout << "step 4b parallel" << endl;
-           //cout << "LISTA RELAZIONI :" << endl;
+    //cout << "LISTA RELAZIONI :" << endl;
     #pragma omp parallel for
     for (long j = -m ; j < m ; j++){
 
@@ -412,9 +396,6 @@ BigInt factorize(BigInt  nRSA, BigInt  x_0,  long k, long m){
         listYpsilonNumber_test[j+m] = temp;
 
     }
-
-
-
     //cout << "m = "<< m << endl;
 
     // FASE SETACCIO, CONTROLLARE QUALI DEI NUMERI GENERATI NELLA YLIST SONO FATTORIZZABILI
@@ -435,7 +416,7 @@ BigInt factorize(BigInt  nRSA, BigInt  x_0,  long k, long m){
     }
 
 
-    cout << "caso3+" << endl;
+    //cout << "caso3+" << endl;
     #pragma omp parallel for schedule(dynamic)
     for (long p = start; p< factorBase.size(); p++){
 
@@ -462,9 +443,9 @@ BigInt factorize(BigInt  nRSA, BigInt  x_0,  long k, long m){
             if (exp == 1){						// se il primo è p
 //cout << "yo3" << endl;
             //   cout << "caso exp = 1"<< endl;
-	        cout << "nRSA= " << nRSA << "p_origin =" << p_origin << endl;
+	        //cout << "nRSA= " << nRSA << "p_origin =" << p_origin << endl;
                 s = mpz_sqrtm(nRSA,p_origin);
-		cout <<"s = "<< s << endl;
+		//cout <<"s = "<< s << endl;
 
                 h = l_fact - s;
 
@@ -472,13 +453,13 @@ BigInt factorize(BigInt  nRSA, BigInt  x_0,  long k, long m){
                 if (s_calc_temp < 0) {
                         s_calc_temp = l_fact + s_calc_temp;
                 }
-            cout <<"s 2= "<< s << endl;
+
                 h_calc_temp = (h - (x_0 % l_fact)) % l_fact;
                 if (h_calc_temp < 0) {
                         h_calc_temp = l_fact + h_calc_temp;
                 }
-cout <<"s =3 "<< s << endl;
-             }else{
+
+            }else{
 //cout << "yo5" << endl;
              // cout << "caso exp = 2"<< endl;							// se abbiamo un p^k
             //  cout << "prima..s = "<< s << " nRSA ="<< nRSA <<", l_fact = "<< l_fact << endl;
@@ -613,7 +594,7 @@ cout <<"s =3 "<< s << endl;
 		   // cout << "  || " << endl;
                     fact_temp = fact_temp * pmpz;
                     if( (listYpsilonNumber[j+m] % fact_temp )== 0){
-                      #pragma omp critical  
+                      #pragma omp critical
 		      listExponentOk[cont][p+1]++;
 			//cout<< "yo ";
                     }else{
@@ -836,23 +817,13 @@ cout <<"s =3 "<< s << endl;
 
             BigInt risultato_1, risultato_2, temp;
 
-
-	   // cout << "a = "<< a << ",b = "<< b << endl;
-
             temp = abs(a+b);
-
-	    //cout << "temp1 = "<< temp << endl;
-            //mpz_gcd(risultato_1.get_mpz_t(),temp.get_mpz_t(),nRSA.get_mpz_t());
             risultato_1 = gcd(temp,nRSA);
 
 	    // cout << "risultato 1 "<<risultato_1<< endl;
 
 	    temp = abs(a-b);
-
-	    //cout << "temp2 = "<< temp << endl;
-
-	    //mpz_gcd(risultato_2.get_mpz_t(),temp.get_mpz_t(),nRSA.get_mpz_t());
-            risultato_2 = gcd(temp,nRSA);
+        risultato_2 = gcd(temp,nRSA);
 
 	    //cout << "risultato 2 "<<risultato_2<< endl;
 
@@ -892,11 +863,7 @@ gettimeofday(&start_tot, NULL);
     if ( argc > 1 ) {
 	//nRSA = 1100017;
         nRSA = atoll(argv[1]);
-        //nRSA = 581677579783;
-	//nRSA = 581677579783;
-	//nRSA = 581677579783;
-	//nRSA = 6179743647887;
-        //long k = pow(exp(sqrt(log(nRSA.get_ui())*log(log(nRSA.get_ui())))),0.35);
+         //long k = pow(exp(sqrt(log(nRSA.get_ui())*log(log(nRSA.get_ui())))),0.35);
         //long m = k * k*k;
 
         //mpz_sqrt(x_0.get_mpz_t(), nRSA.get_mpz_t());
@@ -958,7 +925,8 @@ gettimeofday(&start_tot, NULL);
         cout << " t-step4 = " << elapsedTime_step4 << " ms.\n" << endl;
         cout << " t-step5 = " << elapsedTime_step5<< " ms.\n" << endl;
         cout << " t-step6 = " << elapsedTime_step6 << " ms.\n" << endl;
-
+        cout << "[QSieve, ver. OMP senza GMP]" << endl;
+        cout << endl;
 
     }else{
 
