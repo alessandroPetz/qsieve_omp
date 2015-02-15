@@ -8,8 +8,6 @@
 #include <bitset>
 #include <omp.h>
 
-#define BigInt long long
-
 
 using namespace std;
 
@@ -17,55 +15,25 @@ timeval start_step3, stop_step3,start_step4, stop_step4,start_step5, stop_step5,
 double elapsedTime_step3 = 0,elapsedTime_step4 = 0,elapsedTime_step5 = 0,elapsedTime_step6 = 0;
 
 //FacorBase dichiarata qui cosi non bisogna calcolarsi ogni volta tutti i primi.
-std::vector<BigInt> factorBase ;
+std::vector<int64_t> factorBase ;
 long long primo = 0;
 
-
-//Fonte = http://en.wikipedia.org/wiki/Binary_GCD_algorithm
-BigInt gcd(BigInt u, BigInt v)
+int64_t gcd ( int64_t a, int64_t b )
 {
-  int shift;
-
-  /* GCD(0,v) == v; GCD(u,0) == u, GCD(0,0) == 0 */
-  if (u == 0) return v;
-  if (v == 0) return u;
-
-  /* Let shift := lg K, where K is the greatest power of 2
-        dividing both u and v. */
-  for (shift = 0; ((u | v) & 1) == 0; ++shift) {
-         u >>= 1;
-         v >>= 1;
+  int64_t c;
+  while ( a != 0 ) {
+     c = a; a = b%a;  b = c;
   }
-
-  while ((u & 1) == 0)
-    u >>= 1;
-
-  /* From here on, u is always odd. */
-  do {
-       /* remove all factors of 2 in v -- they are not common */
-       /*   note: v is not zero, so while will terminate */
-       while ((v & 1) == 0)  /* Loop X */
-           v >>= 1;
-
-       /* Now u and v are both odd. Swap if necessary so u <= v,
-          then set v = v - u (which is even). For bignums, the
-          swapping is just pointer movement, and the subtraction
-          can be done in-place. */
-       if (u > v) {
-         BigInt t = v; v = u; u = t;}  // Swap u and v.
-       v = v - u;                       // Here v >= u.
-     } while (v != 0);
-
-  /* restore common factors of 2 */
-  return u << shift;
+  return b;
 }
+
 
 //calculates (a * b) % c taking into account that a * b might overflow
 //Fonte = http://stackoverflow.com/questions/20971888/modular-multiplication-of-large-numbers-in-c
-BigInt mulmod(BigInt  a, BigInt  b, BigInt  c)
+int64_t mulmod(int64_t  a, int64_t  b, int64_t  c)
 {
 
-    BigInt result = 0;
+    int64_t result = 0;
     a %= c;
     b %= c;
     while(b) {
@@ -83,11 +51,11 @@ BigInt mulmod(BigInt  a, BigInt  b, BigInt  c)
 
 //modular exponentiation
 // Info : http://en.wikipedia.org/wiki/Modular_exponentiation
-BigInt modulo(BigInt base, BigInt exponent, BigInt mod)
+int64_t modulo(int64_t base, int64_t exponent, int64_t mod)
 {
 
-    BigInt x = 1;
-    BigInt y = base;
+    int64_t x = 1;
+    int64_t y = base;
 
     while (exponent > 0)
     {
@@ -102,10 +70,10 @@ BigInt modulo(BigInt base, BigInt exponent, BigInt mod)
 
 // modular inversion
 // Fonte : http://rosettacode.org/wiki/Modular_inverse#C.2B.2B
-BigInt mul_inv(BigInt a, BigInt b)
+int64_t mul_inv(int64_t a, int64_t b)
 {
-	BigInt b0 = b, t, q;
-	BigInt x0 = 0, x1 = 1;
+	int64_t b0 = b, t, q;
+	int64_t x0 = 0, x1 = 1;
 	if (b == 1) return 1;
 	while (a > 1) {
 		q = a / b;
@@ -113,7 +81,7 @@ BigInt mul_inv(BigInt a, BigInt b)
         b = a % b;
         a = t;
 		t = x0;
-		BigInt temp = q * x0;
+		int64_t temp = q * x0;
 		x0 = x1 - temp;
 		x1 = t;
 	}
@@ -123,7 +91,7 @@ BigInt mul_inv(BigInt a, BigInt b)
 
 //test Miller-Rabin
 // Info : http://it.wikipedia.org/wiki/Test_di_Miller-Rabin
-bool Miller(BigInt p,int iteration)
+bool Miller(int64_t p,long iteration)
 {
     if (p < 2){
 
@@ -136,16 +104,16 @@ bool Miller(BigInt p,int iteration)
         return false;
     }
 
-    BigInt s = p - 1;
+    int64_t s = p - 1;
     while (s % 2 == 0)
     {
         s /= 2;
     }
 
-    for (int i = 0; i < iteration; i++)
+    for (long i = 0; i < iteration; i++)
     {
-        BigInt a = rand() % (p - 1) + 1, temp = s;
-        BigInt mod = modulo(a, temp, p);
+        int64_t a = rand() % (p - 1) + 1, temp = s;
+        int64_t mod = modulo(a, temp, p);
         while (temp != p - 1 && mod != 1 && mod != p - 1)
         {
             mod = mulmod(mod, mod, p);
@@ -161,16 +129,16 @@ bool Miller(BigInt p,int iteration)
 
 // Calcola il successivo secondo il lemma di hensell
 // Info : http://en.wikipedia.org/wiki/Hensel%27s_lemma
-BigInt  hensellemma(BigInt r1, BigInt  n, BigInt p)
+int64_t  hensellemma(int64_t r1, int64_t  n, int64_t p)
 {
 
     if (r1 == 0){ return 0; }
 
     //return (r1 - ( ( (r1*r1-n) % p ) * mul_inv( r1*2, p )  % p )) % p;
 
-    BigInt temp;
-    //BigInt temp2 = r1*2;
-    //BigInt expneg = -1;
+    int64_t temp;
+    //int64_t temp2 = r1*2;
+    //int64_t expneg = -1;
 
     //mpz_powm (temp.get_mpz_t(), temp2.get_mpz_t() , expneg.get_mpz_t(), p.get_mpz_t() );
     //cout << "inv( " << r1*2 << ", "<< p << ") = " endl;
@@ -186,7 +154,7 @@ BigInt  hensellemma(BigInt r1, BigInt  n, BigInt p)
 }
 
 // effettua il test di Legendre
-bool testLegendre(BigInt number, BigInt nRSA){
+bool testLegendre(int64_t number, int64_t nRSA){
 
     //mpz_class a;
     //mpz_class b = (number-1)/2;
@@ -202,7 +170,7 @@ bool testLegendre(BigInt number, BigInt nRSA){
 }
 
 // Calcola il numero di Legendre
-int legendre(BigInt a, BigInt p)
+long legendre(int64_t a, int64_t p)
 {
       //if (p < 2)  // prime test is expensive.
         //throw new ArgumentOutOfRangeException("p", "p must not be < 2");
@@ -214,7 +182,7 @@ int legendre(BigInt a, BigInt p)
       {
         return 1;
       }
-      BigInt result;
+      int64_t result;
       if (a % 2 == 0)
       {
 	result = legendre(a / 2, p);
@@ -239,12 +207,12 @@ int legendre(BigInt a, BigInt p)
 // Calcola il residuo QUadratico
 // Info: http://it.wikipedia.org/wiki/Residuo_quadratico
 //Fonte: Tradotta in c++ dalla versione mpz -> https://gmplib.org/list-archives/gmp-devel/2006-May/000633.html
-int mpz_sqrtm(BigInt n, BigInt p) {
+long mpz_sqrtm(int64_t n, int64_t p) {
 //cout << " mpz 11 " << endl;
 
-    BigInt q_int;
-    BigInt w, n_inv, y;
-    int i, s;
+    int64_t q_int;
+    int64_t w, n_inv, y;
+    long i, s;
 
     if ( n % p == 0){
         q_int = 0;
@@ -328,7 +296,7 @@ int mpz_sqrtm(BigInt n, BigInt p) {
                         - soluzione!
 */
 
-BigInt factorize(BigInt  nRSA, BigInt  x_0,  long k, long m){
+int64_t factorize(int64_t  nRSA, int64_t  x_0,  long k, long m){
 
     //a = numero rsa
     //x_0 = radice n rsa
@@ -350,7 +318,7 @@ BigInt factorize(BigInt  nRSA, BigInt  x_0,  long k, long m){
     // si intende il Simbolo di Legendre, e si ottiene così la base di fattori B = {p_1,p_2,....,p_t}
     gettimeofday(&start_step3, NULL);
 
-    BigInt primo_temp = 0;
+    int64_t primo_temp = 0;
     if (factorBase.size() != 0){
         primo_temp =  factorBase.at(factorBase.size()-1);
     }
@@ -383,25 +351,25 @@ BigInt factorize(BigInt  nRSA, BigInt  x_0,  long k, long m){
     cout << "step 4"<< endl;
     gettimeofday(&start_step4, NULL);
 
-    BigInt listYpsilonNumber[2*m];
-    BigInt listYpsilonNumber_test[2*m];
+    int64_t listYpsilonNumber[2*m];
+    int64_t listYpsilonNumber_test[2*m];
 
     //cout << "step 4b parallel" << endl;
     //cout << "LISTA RELAZIONI :" << endl;
     #pragma omp parallel for
     for (long j = -m ; j < m ; j++){
 
-        BigInt temp = (pow(x_0 + j, 2)) - nRSA;
+        int64_t temp = (pow(x_0 + j, 2)) - nRSA;
         listYpsilonNumber[j+m] = temp;
         listYpsilonNumber_test[j+m] = temp;
 
     }
     //cout << "m = "<< m << endl;
-
+    int64_t limite_div = abs((listYpsilonNumber[0])/2)+1;
     // FASE SETACCIO, CONTROLLARE QUALI DEI NUMERI GENERATI NELLA YLIST SONO FATTORIZZABILI
     // CON LA FACTORBASE
     // tirato fuori il caso 2 per vedere se diminuisce il tempo.. pare di si.
-    int start = 0;
+    long start = 0;
     if (factorBase.at(0) == 2){
     cout << "caso2" << endl;
 	#pragma omp parallel for schedule(dynamic)
@@ -421,24 +389,19 @@ BigInt factorize(BigInt  nRSA, BigInt  x_0,  long k, long m){
     for (long p = start; p< factorBase.size(); p++){
 
         //cont_factor++;
-        BigInt l_fact = factorBase.at(p);
-
-
-        BigInt p_origin = factorBase.at(p);
+        int64_t l_fact = factorBase.at(p);
+        int64_t p_origin = factorBase.at(p);
         // finche l_fact < radice( numero piu grande da checkare  )
         long exp = 1;
 
         //cout << "yo"<< endl;
-        BigInt s,h, s_calc, h_calc,s_calc_neg, h_calc_neg, s_calc_temp, h_calc_temp ;
+        int64_t s,h, s_calc, h_calc,s_calc_neg, h_calc_neg, s_calc_temp, h_calc_temp ;
 
         bool ok_sieve = true;
         while( ok_sieve ){
             //cout << "yo" << endl;
             //mpz_pow_ui(l_fact.get_mpz_t(),p_origin.get_mpz_t(), exp);	// primo elevato a numero
 
-            l_fact = pow(p_origin, exp);
-
-            if (l_fact > 2*m ) ok_sieve = false;
             // tutte le j = s(h) - X_0 + k*l_fact per k < l_fact
             if (exp == 1){						// se il primo è p
 //cout << "yo3" << endl;
@@ -481,7 +444,7 @@ BigInt factorize(BigInt  nRSA, BigInt  x_0,  long k, long m){
 
             }
             //cout << "yo6" << endl;
-            BigInt k = 0;
+            int64_t k = 0;
             while(true){
 
               //  cout << "whileeeeeee con k ="<< k <<endl;
@@ -490,7 +453,7 @@ BigInt factorize(BigInt  nRSA, BigInt  x_0,  long k, long m){
                 s_calc_neg = s_calc_temp + (l_fact * (-k));
                 h_calc_neg = h_calc_temp + (l_fact * (-k));
 
-                BigInt a = s_calc + m, b = h_calc + m, c = s_calc_neg + m, d = h_calc_neg + m;
+                int64_t a = s_calc + m, b = h_calc + m, c = s_calc_neg + m, d = h_calc_neg + m;
                // cout << "a= "<< a << ", b = " << b <<" c= "<< c << ", d = " << d << endl;
 
                 if ((a < 0 or a >= 2*m) and (b<0 or b >= 2 * m) and (c < 0 or c >= 2*m) and (d < 0 or d >= 2*m)){
@@ -520,6 +483,8 @@ BigInt factorize(BigInt  nRSA, BigInt  x_0,  long k, long m){
                 k++;
             }
             exp++;                                                     // aumentiamo l esponente
+            l_fact = pow(p_origin, exp);
+            if (l_fact > limite_div) ok_sieve = false;
         }
     }
 
@@ -552,9 +517,9 @@ BigInt factorize(BigInt  nRSA, BigInt  x_0,  long k, long m){
 
 
 
-    BigInt listYpsilonNumberOk[contRelationOk];
-    BigInt listExponentOk_mod2[contRelationOk][factorBase.size()+1];
-    BigInt listExponentOk[contRelationOk][factorBase.size()+1];
+    int64_t listYpsilonNumberOk[contRelationOk];
+    int64_t listExponentOk_mod2[contRelationOk][factorBase.size()+1];
+    int64_t listExponentOk[contRelationOk][factorBase.size()+1];
 
     #pragma omp parallel for
     for (long x = 0; x <contRelationOk; x++){
@@ -571,7 +536,7 @@ BigInt factorize(BigInt  nRSA, BigInt  x_0,  long k, long m){
     // cout << "LISTA RELAZIONI ACCETTATE :" << endl;
 
     long cont = 0;
-    std::vector<BigInt> jBuoni ;
+    std::vector<int64_t> jBuoni ;
 
     for (long j = -m ; j < +m ; j++){
         if (listYpsilonNumber_test[j+m] == -1 or listYpsilonNumber_test[j+m] == 1){
@@ -584,11 +549,11 @@ BigInt factorize(BigInt  nRSA, BigInt  x_0,  long k, long m){
 	  #pragma omp parallel for schedule(dynamic)
            for (long p = 0; p < factorBase.size(); p++){
 
-                BigInt fact_temp = 1;
+                int64_t fact_temp = 1;
                 bool ok = true;
                 do{
                           //  cout << "5c" << endl;
-                    BigInt pmpz = factorBase.at(p);
+                    int64_t pmpz = factorBase.at(p);
 		   // cout << pmpz <<", " ;
 		   // cout << " lynumber" <<listYpsilonNumber[j+m] ;
 		   // cout << "  || " << endl;
@@ -652,9 +617,9 @@ BigInt factorize(BigInt  nRSA, BigInt  x_0,  long k, long m){
                 // devo scambiarle
 
                 #pragma omp parallel for
-                for (int z = 0; z < contRelationOk; z++){
+                for (long z = 0; z < contRelationOk; z++){
                     //cout << omp_get_thread_num() << endl;
-                    BigInt temp = listExponentOk_mod2[z][row_i];
+                    int64_t temp = listExponentOk_mod2[z][row_i];
                     listExponentOk_mod2[z][row_i] = listExponentOk_mod2[z][cont_rig];
                     listExponentOk_mod2[z][cont_rig] = temp;
                 }
@@ -663,9 +628,9 @@ BigInt factorize(BigInt  nRSA, BigInt  x_0,  long k, long m){
 
             // cerco le righe che hanno 1 nella colonna di adesso e le sommo alla riga selezionata
             #pragma omp parallel for schedule(dynamic)
-            for(int k = cont_rig; k <  factorBase.size()+1; k++){
+            for(long k = cont_rig; k <  factorBase.size()+1; k++){
                 if (listExponentOk_mod2[j][k] == 1){
-                    for (int cc = 0; cc< contRelationOk; cc++){
+                    for (long cc = 0; cc< contRelationOk; cc++){
 
                         listExponentOk_mod2[cc][k] = (listExponentOk_mod2[cc][k] + listExponentOk_mod2[cc][cont_rig-1]) % 2 ;
                     }
@@ -678,8 +643,8 @@ BigInt factorize(BigInt  nRSA, BigInt  x_0,  long k, long m){
 
 
     // TROVARE LA SOLUZIONE ( vettore spazio nullo) valutando le x dal basso!!!!
-    int vect_solution[contRelationOk]; // 0 var libere, -1 da valutare
-    int vect_pivot[contRelationOk];  // -1 no pivot, n pos riga
+    long vect_solution[contRelationOk]; // 0 var libere, -1 da valutare
+    long vect_pivot[contRelationOk];  // -1 no pivot, n pos riga
 
     #pragma omp parallel for
     for (long i = 0; i< contRelationOk; i++){
@@ -705,7 +670,7 @@ BigInt factorize(BigInt  nRSA, BigInt  x_0,  long k, long m){
 
 
 
-    BigInt result = 0;
+    int64_t result = 0;
     // PARALLELIZZ0 IN MODO CHE TUTTI GLI ARRAI SOLUZIONI POSSIBILI
     // VEGONO VALUTATI IN PARALLELO
     cout << "step 7" << endl;
@@ -713,7 +678,7 @@ BigInt factorize(BigInt  nRSA, BigInt  x_0,  long k, long m){
     for(long s = 0; s < n_free_var; s++){
             //cout << "numeri free var" <<n_free_var << endl;
         // copia locale di vect solution... ???? è una soluzione buona? pare di si..
-        int vect_solution_local[contRelationOk];
+        long vect_solution_local[contRelationOk];
         for (long i = 0; i< contRelationOk; i++){
             vect_solution_local[i] = vect_solution[i];
 
@@ -769,12 +734,12 @@ BigInt factorize(BigInt  nRSA, BigInt  x_0,  long k, long m){
         // e si pone b uguale al prodotto delle potenze di p_1,p_2,...,p_t con esponenti uguali
         // alla semisomma degli esponenti della fattorizzazione degli stessi y_i
 
-            BigInt a = 1;
-            BigInt b = 1;
+            int64_t a = 1;
+            int64_t b = 1;
             long cont = 0;
-            vector<BigInt>::iterator p2;
+            vector<int64_t>::iterator p2;
       //cout << "step 7" << endl;
-            BigInt exponent[factorBase.size()];
+            int64_t exponent[factorBase.size()];
             for (long i = 0; i < factorBase.size(); i++){
                 exponent[i]=0;
             }
@@ -783,31 +748,25 @@ BigInt factorize(BigInt  nRSA, BigInt  x_0,  long k, long m){
 
                 if (vect_solution_local[cont] == 1){
 
-                    a = (a * (x_0 + *p2)) % nRSA;
-                    for (long i = 1; i < factorBase.size()+1; i++){
+                   // a = (a * (x_0 + *p2)) % nRSA;
+                    
+		  a = mulmod(a , x_0 + *p2 , nRSA);
+		  
+		  for (long i = 1; i < factorBase.size()+1; i++){
 
                         exponent[i-1] = exponent[i-1] + listExponentOk[cont][i];
                     }
                 }
                 cont++;
             }
-            cont=0;
+
             for (long p = 0; p <  factorBase.size(); p++){
 
-                if (exponent[cont]>0){
-
-                   //  cout << "b = "<< b << "p = " << *p3 << "^" << exponent[cont] << endl;
-                    BigInt p3mpz = factorBase.at(p);
-                    BigInt temp = exponent[cont] * 2;
-                    //mpz_powm(temp.get_mpz_t(),p3mpz.get_mpz_t(),temp.get_mpz_t(),nRSA.get_mpz_t());
-                    temp = modulo(p3mpz, temp, nRSA);
-                    temp = temp * b;
-                    b = temp % nRSA;
-                    //mpz_mod(b.get_mpz_t(),temp.get_mpz_t(),nRSA.get_mpz_t());
-
-                    //b = (b * mod_pow(*p3,exponent[cont]/2,nRSA)) % nRSA;
+                if (exponent[p]>0){
+		    
+		    b = (exponent[p]>0)* mulmod(b, modulo(factorBase.at(p), (exponent[p] / 2), nRSA),nRSA)  + (exponent[p]<=0)*b;
+		    
                 }
-                cont++;
             }
 
             //STEP 8 = CALCOLO SOLUZIONE
@@ -815,15 +774,17 @@ BigInt factorize(BigInt  nRSA, BigInt  x_0,  long k, long m){
             // altrimenti si torna al passo 2) con una scelta di k più grande
          //   cout << "step 8" << endl;
 
-            BigInt risultato_1, risultato_2, temp;
+            int64_t risultato_1, risultato_2, temp;
 
-            temp = abs(a+b);
+            temp = a+b;
             risultato_1 = gcd(temp,nRSA);
 
 	    // cout << "risultato 1 "<<risultato_1<< endl;
 
-	    temp = abs(a-b);
-        risultato_2 = gcd(temp,nRSA);
+	    temp = a-b;
+	    if (temp < 0) temp = -temp;
+            
+	    risultato_2 = gcd(temp,nRSA);
 
 	    //cout << "risultato 2 "<<risultato_2<< endl;
 
@@ -858,7 +819,7 @@ double elapsedTime_tot;
 gettimeofday(&start_tot, NULL);
     // STEP1 : Viene dato in input il numero naturale dispari n>1.
     //long nRSA =  argc[1];
-    BigInt nRSA, result, x_0;
+    int64_t nRSA, result, x_0;
 
     if ( argc > 1 ) {
 	//nRSA = 1100017;
@@ -875,8 +836,8 @@ gettimeofday(&start_tot, NULL);
 
         bool soluzione_trovata = false;
 
-        int cont_meno1 = 0;
-        int cont_meno2 = 0;
+        long cont_meno1 = 0;
+        long cont_meno2 = 0;
         while(!soluzione_trovata){
 
          //   cout << "lancio con nRSA = "<< nRSA << ", k = "<< k << ", m = " << m << endl;
@@ -920,6 +881,7 @@ gettimeofday(&start_tot, NULL);
         cout << "-1 volte = " << cont_meno1 << ", -2 volte = " << cont_meno2 << endl;
         cout << endl << "nRSA = " << result << " x " << nRSA/result <<endl;
         cout << "nrsa = " << nRSA << endl;
+	cout << "nrsa ris = "<< result * (nRSA / result) << endl;
         cout << " t-totale = " << elapsedTime_tot << " ms.\n" << endl;
         cout << " t-step3 = " << elapsedTime_step3 << " ms.\n" << endl;
         cout << " t-step4 = " << elapsedTime_step4 << " ms.\n" << endl;
